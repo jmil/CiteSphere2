@@ -59,7 +59,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Find the root paper
+      console.log(`Searching for DOI: ${doi}`);
       const rootPmid = await pubmedService.searchByDoi(doi);
+      console.log(`Found PMID: ${rootPmid}`);
+      
       if (!rootPmid) {
         return res.status(404).json({ error: "Paper not found in PubMed" });
       }
@@ -140,6 +143,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       await processPaper(rootPmid, 0);
+      
+      console.log(`Network generated: ${nodes.length} nodes, ${edges.length} edges`);
 
       const processingTime = Date.now() - startTime;
       
