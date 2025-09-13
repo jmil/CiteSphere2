@@ -29,12 +29,48 @@ export const citationNetworks = pgTable("citation_networks", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const insertPaperSchema = createInsertSchema(papers).omit({
+// Zod schemas for JSON shapes
+const networkNodeZ = z.object({
+  id: z.string(),
+  pmid: z.string().optional(),
+  doi: z.string().optional(),
+  title: z.string(),
+  authors: z.array(z.string()),
+  journal: z.string().optional(),
+  year: z.number().int().optional(),
+  citationCount: z.number().int(),
+  level: z.number().int(),
+  x: z.number().optional(),
+  y: z.number().optional(),
+});
+
+const networkEdgeZ = z.object({
+  source: z.string(),
+  target: z.string(),
+  type: z.enum(['cites', 'cited_by']),
+});
+
+const networkMetadataZ = z.object({
+  totalNodes: z.number().int(),
+  totalEdges: z.number().int(),
+  processingTime: z.number().int(),
+  maxDepth: z.number().int(),
+});
+
+export const insertPaperSchema = createInsertSchema(papers, {
+  authors: z.array(z.string()).nullable().optional(),
+  references: z.array(z.string()).nullable().optional(),
+  citedBy: z.array(z.string()).nullable().optional(),
+}).omit({
   id: true,
   createdAt: true,
 });
 
-export const insertCitationNetworkSchema = createInsertSchema(citationNetworks).omit({
+export const insertCitationNetworkSchema = createInsertSchema(citationNetworks, {
+  nodes: z.array(networkNodeZ).nullable().optional(),
+  edges: z.array(networkEdgeZ).nullable().optional(),
+  metadata: networkMetadataZ.nullable().optional(),
+}).omit({
   id: true,
   createdAt: true,
 });

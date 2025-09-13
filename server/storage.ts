@@ -36,7 +36,7 @@ export class DatabaseStorage implements IStorage {
   async createPaper(insertPaper: InsertPaper): Promise<Paper> {
     const [paper] = await db
       .insert(papers)
-      .values([insertPaper])
+      .values(insertPaper)
       .returning();
     return paper;
   }
@@ -66,7 +66,7 @@ export class DatabaseStorage implements IStorage {
   async createCitationNetwork(insertNetwork: InsertCitationNetwork): Promise<CitationNetwork> {
     const [network] = await db
       .insert(citationNetworks)
-      .values([insertNetwork])
+      .values(insertNetwork)
       .returning();
     return network;
   }
