@@ -1,5 +1,6 @@
-import { type Paper, type InsertPaper, type CitationNetwork, type InsertCitationNetwork } from "@shared/schema";
-import { randomUUID } from "crypto";
+import { papers, citationNetworks, type Paper, type InsertPaper, type CitationNetwork, type InsertCitationNetwork } from "@shared/schema";
+import { db } from "./db";
+import { eq, and } from "drizzle-orm";
 
 export interface IStorage {
   // Paper operations
@@ -16,76 +17,68 @@ export interface IStorage {
   updateCitationNetwork(id: string, network: Partial<CitationNetwork>): Promise<CitationNetwork | undefined>;
 }
 
-export class MemStorage implements IStorage {
-  private papers: Map<string, Paper>;
-  private citationNetworks: Map<string, CitationNetwork>;
-
-  constructor() {
-    this.papers = new Map();
-    this.citationNetworks = new Map();
-  }
-
+export class DatabaseStorage implements IStorage {
   async getPaper(id: string): Promise<Paper | undefined> {
-    return this.papers.get(id);
+    const [paper] = await db.select().from(papers).where(eq(papers.id, id));
+    return paper || undefined;
   }
 
   async getPaperByDoi(doi: string): Promise<Paper | undefined> {
-    return Array.from(this.papers.values()).find(paper => paper.doi === doi);
+    const [paper] = await db.select().from(papers).where(eq(papers.doi, doi));
+    return paper || undefined;
   }
 
   async getPaperByPmid(pmid: string): Promise<Paper | undefined> {
-    return Array.from(this.papers.values()).find(paper => paper.pmid === pmid);
+    const [paper] = await db.select().from(papers).where(eq(papers.pmid, pmid));
+    return paper || undefined;
   }
 
   async createPaper(insertPaper: InsertPaper): Promise<Paper> {
-    const id = randomUUID();
-    const paper: Paper = { 
-      ...insertPaper, 
-      id,
-      createdAt: new Date()
-    };
-    this.papers.set(id, paper);
+    const [paper] = await db
+      .insert(papers)
+      .values(insertPaper)
+      .returning();
     return paper;
   }
 
   async updatePaper(id: string, paperUpdate: Partial<Paper>): Promise<Paper | undefined> {
-    const paper = this.papers.get(id);
-    if (!paper) return undefined;
-    
-    const updatedPaper = { ...paper, ...paperUpdate };
-    this.papers.set(id, updatedPaper);
-    return updatedPaper;
+    const [paper] = await db
+      .update(papers)
+      .set(paperUpdate)
+      .where(eq(papers.id, id))
+      .returning();
+    return paper || undefined;
   }
 
   async getCitationNetwork(id: string): Promise<CitationNetwork | undefined> {
-    return this.citationNetworks.get(id);
+    const [network] = await db.select().from(citationNetworks).where(eq(citationNetworks.id, id));
+    return network || undefined;
   }
 
   async getCitationNetworkByRootDoi(rootDoi: string, depth: number): Promise<CitationNetwork | undefined> {
-    return Array.from(this.citationNetworks.values()).find(
-      network => network.rootDoi === rootDoi && network.depth === depth
-    );
+    const [network] = await db
+      .select()
+      .from(citationNetworks)
+      .where(and(eq(citationNetworks.rootDoi, rootDoi), eq(citationNetworks.depth, depth)));
+    return network || undefined;
   }
 
   async createCitationNetwork(insertNetwork: InsertCitationNetwork): Promise<CitationNetwork> {
-    const id = randomUUID();
-    const network: CitationNetwork = { 
-      ...insertNetwork, 
-      id,
-      createdAt: new Date()
-    };
-    this.citationNetworks.set(id, network);
+    const [network] = await db
+      .insert(citationNetworks)
+      .values(insertNetwork)
+      .returning();
     return network;
   }
 
   async updateCitationNetwork(id: string, networkUpdate: Partial<CitationNetwork>): Promise<CitationNetwork | undefined> {
-    const network = this.citationNetworks.get(id);
-    if (!network) return undefined;
-    
-    const updatedNetwork = { ...network, ...networkUpdate };
-    this.citationNetworks.set(id, updatedNetwork);
-    return updatedNetwork;
+    const [network] = await db
+      .update(citationNetworks)
+      .set(networkUpdate)
+      .where(eq(citationNetworks.id, id))
+      .returning();
+    return network || undefined;
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
