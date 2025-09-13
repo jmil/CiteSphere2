@@ -71,16 +71,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const edges: NetworkEdge[] = [];
       const processedPmids = new Set<string>();
 
+      console.log(`\n=== Starting network generation for DOI: ${doi}, depth: ${depth} ===`);
+      console.log(`Initial state: ${nodes.length} nodes, ${edges.length} edges`);
+
       // Process papers recursively
       const processPaper = async (pmid: string, currentDepth: number): Promise<void> => {
-        console.log(`Processing paper at depth ${currentDepth}: PMID ${pmid}`);
+        console.log(`\n>>> Processing paper at depth ${currentDepth}: PMID ${pmid}`);
+        console.log(`    Current network state: ${nodes.length} nodes, ${edges.length} edges`);
         
         if (currentDepth > depth || processedPmids.has(pmid)) {
-          console.log(`  Skipping: depth exceeded or already processed`);
+          console.log(`    ⚠️ Skipping: depth exceeded (${currentDepth} > ${depth}) or already processed`);
           return;
         }
 
         processedPmids.add(pmid);
+        console.log(`    ✓ Added PMID ${pmid} to processed set (total: ${processedPmids.size})`);
         
         // Get paper details
         const paperDetails = await pubmedService.getPaperDetails(pmid);
@@ -121,14 +126,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           level: currentDepth
         };
         nodes.push(node);
-        console.log(`  Added node ${nodes.length}: ${node.title}`);
+        console.log(`    ✓ Added node #${nodes.length}: "${node.title.substring(0, 50)}..."`);
+        console.log(`    Node details: PMID=${node.pmid}, DOI=${node.doi || 'N/A'}, Year=${node.year || 'N/A'}`);
 
         if (currentDepth < depth) {
-          // Get papers that cite this one
-          console.log(`  Looking for papers citing PMID ${pmid}...`);
-          const citingPapers = await pubmedService.findSimilarPapers(pmid, 5);
-          console.log(`  Found ${citingPapers.length} citing papers`);
+          console.log(`    → Fetching connections (currentDepth ${currentDepth} < maxDepth ${depth})`);
           
+          // Get papers that cite this one
+          console.log(`    → Looking for papers citing PMID ${pmid}...`);
+          const citingPapers = await pubmedService.findSimilarPapers(pmid, 5);
+          console.log(`    ✓ Found ${citingPapers.length} citing papers`);
+          
+          const citingPromises: Promise<void>[] = [];
           for (const citingPmid of citingPapers) {
             if (!processedPmids.has(citingPmid)) {
               edges.push({
@@ -136,15 +145,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 target: pmid,
                 type: 'cites'
               });
-              await processPaper(citingPmid, currentDepth + 1);
+              console.log(`      + Added edge: ${citingPmid} → ${pmid} (total edges: ${edges.length})`);
+              citingPromises.push(processPaper(citingPmid, currentDepth + 1));
+            } else {
+              console.log(`      - Skipping already processed: ${citingPmid}`);
             }
           }
 
           // Get related papers (simulating references)
-          console.log(`  Looking for related papers to PMID ${pmid}...`);
+          console.log(`    → Looking for related papers to PMID ${pmid}...`);
           const relatedPapers = await pubmedService.getRelatedPapers(pmid, 3);
-          console.log(`  Found ${relatedPapers.length} related papers`);
+          console.log(`    ✓ Found ${relatedPapers.length} related papers`);
           
+          const relatedPromises: Promise<void>[] = [];
           for (const relatedPmid of relatedPapers) {
             if (!processedPmids.has(relatedPmid)) {
               edges.push({
@@ -152,15 +165,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 target: relatedPmid,
                 type: 'cites'
               });
-              await processPaper(relatedPmid, currentDepth + 1);
+              console.log(`      + Added edge: ${pmid} → ${relatedPmid} (total edges: ${edges.length})`);
+              relatedPromises.push(processPaper(relatedPmid, currentDepth + 1));
+            } else {
+              console.log(`      - Skipping already processed: ${relatedPmid}`);
             }
           }
+          
+          // Process all papers in parallel
+          console.log(`    → Processing ${citingPromises.length + relatedPromises.length} papers in parallel...`);
+          await Promise.all([...citingPromises, ...relatedPromises]);
+          console.log(`    ✓ Completed processing connections for PMID ${pmid}`);
+        } else {
+          console.log(`    → Reached max depth ${depth}, not fetching connections`);
         }
       };
 
+      console.log(`\n>>> Starting recursive processing from root PMID: ${rootPmid}`);
       await processPaper(rootPmid, 0);
       
-      console.log(`Network generated: ${nodes.length} nodes, ${edges.length} edges`);
+      console.log(`\n=== Network generation completed ===`);
+      console.log(`Final network: ${nodes.length} nodes, ${edges.length} edges`);
+      console.log(`Processed PMIDs: ${Array.from(processedPmids).join(', ')}`);
+      
+      // Debug: Log all nodes
+      console.log(`\nNodes in network:`);
+      nodes.forEach((node, idx) => {
+        console.log(`  ${idx + 1}. PMID: ${node.pmid}, Level: ${node.level}, Title: "${node.title.substring(0, 40)}..."`);
+      });
+      
+      // Debug: Log all edges
+      console.log(`\nEdges in network:`);
+      edges.forEach((edge, idx) => {
+        console.log(`  ${idx + 1}. ${edge.source} → ${edge.target} (${edge.type})`);
+      });
 
       const processingTime = Date.now() - startTime;
       
@@ -172,13 +210,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       // Create and store network
+      console.log(`\n>>> Storing network in database...`);
+      console.log(`Data to store: rootDoi=${doi}, depth=${depth}, nodes=${nodes.length}, edges=${edges.length}`);
+      
       const network = await storage.createCitationNetwork({
         rootDoi: doi,
         depth,
-        nodes,
-        edges,
-        metadata
+        nodes: nodes,
+        edges: edges,
+        metadata: metadata
       });
+      
+      console.log(`✓ Network stored with ID: ${network.id}`);
+      console.log(`Stored network has ${network.nodes?.length || 0} nodes and ${network.edges?.length || 0} edges`);
 
       res.json(network);
     } catch (error) {
