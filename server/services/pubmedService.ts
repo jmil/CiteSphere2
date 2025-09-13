@@ -99,7 +99,7 @@ export class PubMedService {
       return null;
     }
 
-    const result = this.xmlParser.parsePaperXml(xml);
+    const result = await this.xmlParser.parsePaperXml(xml);
     console.log(`Paper details parsed:`, result?.title ? `"${result.title}"` : 'No title');
     return result;
   }
