@@ -45,8 +45,11 @@ export class PubMedService {
   async searchByDoi(doi: string): Promise<string | null> {
     try {
       const searchUrl = `${this.baseUrl}/esearch.fcgi?db=pubmed&term=${encodeURIComponent(doi)}[DOI]&retmode=json`;
+      console.log(`PubMed API search URL: ${searchUrl}`);
+      
       const response = await fetch(searchUrl);
       const data = await response.json();
+      console.log(`PubMed API response:`, JSON.stringify(data, null, 2));
       
       if (data.esearchresult?.idlist?.length > 0) {
         return data.esearchresult.idlist[0];
@@ -62,11 +65,13 @@ export class PubMedService {
     // Check cache first
     const cachedXml = await this.getCachedXml(pmid);
     if (cachedXml) {
+      console.log(`Using cached XML for PMID ${pmid}`);
       return cachedXml;
     }
 
     try {
       const fetchUrl = `${this.baseUrl}/efetch.fcgi?db=pubmed&id=${pmid}&retmode=xml`;
+      console.log(`Fetching from PubMed: ${fetchUrl}`);
       const response = await fetch(fetchUrl);
       
       if (!response.ok) {
@@ -74,6 +79,7 @@ export class PubMedService {
       }
       
       const xml = await response.text();
+      console.log(`Fetched XML for PMID ${pmid}, length: ${xml.length} chars`);
       
       // Cache the XML
       await this.cacheXml(pmid, xml);
@@ -86,10 +92,16 @@ export class PubMedService {
   }
 
   async getPaperDetails(pmid: string): Promise<PubMedSearchResult | null> {
+    console.log(`Getting paper details for PMID: ${pmid}`);
     const xml = await this.fetchPaperXml(pmid);
-    if (!xml) return null;
+    if (!xml) {
+      console.log(`No XML data for PMID: ${pmid}`);
+      return null;
+    }
 
-    return this.xmlParser.parsePaperXml(xml);
+    const result = this.xmlParser.parsePaperXml(xml);
+    console.log(`Paper details parsed:`, result?.title ? `"${result.title}"` : 'No title');
+    return result;
   }
 
   async findSimilarPapers(pmid: string, maxResults: number = 20): Promise<string[]> {
