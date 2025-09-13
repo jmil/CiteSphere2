@@ -25,9 +25,10 @@ interface D3Node extends NetworkNode {
   vy?: number;
 }
 
-interface D3Link extends NetworkEdge {
+interface D3Link {
   source: D3Node;
   target: D3Node;
+  type: 'cites' | 'cited_by';
 }
 
 export function NetworkVisualization({
@@ -46,7 +47,7 @@ export function NetworkVisualization({
   const [hoveredNode, setHoveredNode] = useState<NetworkNode | null>(null);
 
   useEffect(() => {
-    if (!network || !svgRef.current) return;
+    if (!network || !network.nodes || !network.edges || !svgRef.current) return;
 
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
@@ -64,7 +65,7 @@ export function NetworkVisualization({
     }));
 
     // Color scale based on level
-    const colorScale = d3.scaleOrdinal()
+    const colorScale = d3.scaleOrdinal<number, string>()
       .domain([0, 1, 2, 3, 4])
       .range(["hsl(221.2 83.2% 53.3%)", "hsl(142.1 76.2% 36.3%)", "hsl(47.9 95.8% 53.1%)", "hsl(280 100% 70%)", "hsl(0 84% 60%)"]);
 
@@ -105,7 +106,7 @@ export function NetworkVisualization({
       .enter().append("circle")
       .attr("class", "citation-node")
       .attr("r", d => d.level === 0 ? 12 : (d.level === 1 ? 8 : 6))
-      .style("fill", d => colorScale(d.level) as string)
+      .style("fill", d => colorScale(d.level))
       .style("stroke", "#fff")
       .style("stroke-width", d => d.level === 0 ? 2 : 1.5)
       .style("cursor", "pointer")
@@ -224,7 +225,7 @@ export function NetworkVisualization({
           <div className="flex items-center justify-between">
             <CardTitle className="text-xl">Citation Network</CardTitle>
             <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-              {network && (
+              {network && network.nodes && network.edges && (
                 <>
                   <span data-testid="text-node-count">Nodes: {network.nodes.length}</span>
                   <span data-testid="text-edge-count">Edges: {network.edges.length}</span>

@@ -18,7 +18,7 @@ export function useNetworkData() {
       setNetwork(data);
       toast({
         title: "Success",
-        description: `Citation network generated with ${data.nodes.length} papers and ${data.edges.length} connections.`,
+        description: `Citation network generated with ${data.nodes?.length || 0} papers and ${data.edges?.length || 0} connections.`,
       });
     },
     onError: (error: Error) => {

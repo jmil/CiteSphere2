@@ -31,7 +31,7 @@ export default function Visualizer() {
     }
   };
 
-  const selectedNode = network?.nodes.find(node => node.id === selectedNodeId);
+  const selectedNode = network?.nodes?.find(node => node.id === selectedNodeId);
 
   return (
     <div className="min-h-screen bg-background text-foreground">

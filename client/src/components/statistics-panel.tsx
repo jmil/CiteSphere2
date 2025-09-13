@@ -21,13 +21,13 @@ export function StatisticsPanel({ network, className, ...props }: StatisticsPane
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           <div className="text-center">
             <div className="text-2xl font-bold text-primary" data-testid="stat-total-papers">
-              {network.metadata?.totalNodes || network.nodes.length}
+              {network.metadata?.totalNodes || network.nodes?.length || 0}
             </div>
             <div className="text-sm text-muted-foreground">Total Papers</div>
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold text-primary" data-testid="stat-total-citations">
-              {network.metadata?.totalEdges || network.edges.length}
+              {network.metadata?.totalEdges || network.edges?.length || 0}
             </div>
             <div className="text-sm text-muted-foreground">Citation Links</div>
           </div>
