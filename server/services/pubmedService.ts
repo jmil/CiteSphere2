@@ -107,8 +107,10 @@ export class PubMedService {
   async findSimilarPapers(pmid: string, maxResults: number = 20): Promise<string[]> {
     try {
       const linkUrl = `${this.baseUrl}/elink.fcgi?dbfrom=pubmed&db=pubmed&id=${pmid}&linkname=pubmed_pubmed_citedin&retmode=json`;
+      console.log(`    Fetching citing papers: ${linkUrl}`);
       const response = await fetch(linkUrl);
       const data = await response.json();
+      console.log(`    ELink response for citing papers:`, JSON.stringify(data.linksets?.[0]?.linksetdbs?.length || 0) + ' linksetdbs');
       
       const citingPmids: string[] = [];
       if (data.linksets?.[0]?.linksetdbs) {
@@ -118,6 +120,7 @@ export class PubMedService {
           }
         }
       }
+      console.log(`    Found ${citingPmids.length} papers citing PMID ${pmid}`);
       
       return citingPmids;
     } catch (error) {
@@ -129,8 +132,10 @@ export class PubMedService {
   async getRelatedPapers(pmid: string, maxResults: number = 10): Promise<string[]> {
     try {
       const linkUrl = `${this.baseUrl}/elink.fcgi?dbfrom=pubmed&db=pubmed&id=${pmid}&linkname=pubmed_pubmed&retmode=json`;
+      console.log(`    Fetching related papers: ${linkUrl}`);
       const response = await fetch(linkUrl);
       const data = await response.json();
+      console.log(`    ELink response for related papers:`, JSON.stringify(data.linksets?.[0]?.linksetdbs?.length || 0) + ' linksetdbs');
       
       const relatedPmids: string[] = [];
       if (data.linksets?.[0]?.linksetdbs) {
@@ -140,6 +145,7 @@ export class PubMedService {
           }
         }
       }
+      console.log(`    Found ${relatedPmids.length} related papers for PMID ${pmid}`);
       
       return relatedPmids;
     } catch (error) {

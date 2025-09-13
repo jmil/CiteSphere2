@@ -73,7 +73,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Process papers recursively
       const processPaper = async (pmid: string, currentDepth: number): Promise<void> => {
+        console.log(`Processing paper at depth ${currentDepth}: PMID ${pmid}`);
+        
         if (currentDepth > depth || processedPmids.has(pmid)) {
+          console.log(`  Skipping: depth exceeded or already processed`);
           return;
         }
 
@@ -81,7 +84,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Get paper details
         const paperDetails = await pubmedService.getPaperDetails(pmid);
-        if (!paperDetails) return;
+        if (!paperDetails) {
+          console.log(`  No paper details found for PMID ${pmid}`);
+          return;
+        }
+        console.log(`  Found paper: "${paperDetails.title}"`);
+        
 
         // Store paper in database
         let paper = await storage.getPaperByPmid(pmid);
@@ -101,7 +109,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         // Add to network nodes
-        nodes.push({
+        const node = {
           id: pmid,
           pmid: paperDetails.pmid,
           doi: paperDetails.doi,
@@ -111,11 +119,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           year: paperDetails.year,
           citationCount: 0,
           level: currentDepth
-        });
+        };
+        nodes.push(node);
+        console.log(`  Added node ${nodes.length}: ${node.title}`);
 
         if (currentDepth < depth) {
           // Get papers that cite this one
+          console.log(`  Looking for papers citing PMID ${pmid}...`);
           const citingPapers = await pubmedService.findSimilarPapers(pmid, 5);
+          console.log(`  Found ${citingPapers.length} citing papers`);
+          
           for (const citingPmid of citingPapers) {
             if (!processedPmids.has(citingPmid)) {
               edges.push({
@@ -128,7 +141,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
 
           // Get related papers (simulating references)
+          console.log(`  Looking for related papers to PMID ${pmid}...`);
           const relatedPapers = await pubmedService.getRelatedPapers(pmid, 3);
+          console.log(`  Found ${relatedPapers.length} related papers`);
+          
           for (const relatedPmid of relatedPapers) {
             if (!processedPmids.has(relatedPmid)) {
               edges.push({
