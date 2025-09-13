@@ -1,34 +1,58 @@
-# Overview
+# Scientific Citation Network Visualization Tool
 
-This is a scientific citation network visualization tool that allows researchers to explore academic paper relationships through interactive network graphs. The application takes a DOI (Digital Object Identifier) as input and generates a visual network showing how papers cite each other, helping users understand research connections and influence patterns in academic literature.
+## Overview
 
-# User Preferences
+A web-based tool that enables researchers to explore and visualize citation relationships between academic papers. The application helps researchers understand research influence patterns and discover related work by fetching and displaying citation data from PubMed. Currently in Phase 1 of development, focusing on data collection and basic display of citation relationships.
+
+## User Preferences
 
 Preferred communication style: Simple, everyday language.
 
-# System Architecture
+## System Architecture
 
-## Frontend Architecture
-The client is built using React with TypeScript, utilizing a modern component-based architecture. The UI is powered by shadcn/ui components built on top of Radix UI primitives, providing accessible and customizable interface elements. The application uses Wouter for lightweight client-side routing and TanStack Query for server state management and caching. D3.js handles the complex network visualization, creating interactive force-directed graphs that users can manipulate.
+### Application Architecture
+- **Backend**: Node.js with Express.js server providing RESTful API endpoints
+- **Frontend**: Static HTML/CSS/JavaScript served from Express static middleware
+- **Data Flow**: Client-side form submission → Express API → PubMed API integration → XML processing → Response display
 
-## Backend Architecture
-The server follows a REST API pattern using Express.js with TypeScript. The architecture separates concerns through dedicated service layers - a PubMedService handles external API interactions with the NIH's PubMed database, while an XMLParser processes the returned scientific paper metadata. The storage layer abstracts database operations through a unified interface, making it easy to swap storage implementations.
+### Data Collection Pipeline
+- **DOI Resolution**: Converts DOI input to PMID using NCBI E-utilities API
+- **PubMed Integration**: Fetches XML data for papers using NCBI efetch API
+- **Citation Discovery**: Extracts citing papers, referenced papers, and related papers from PubMed data
+- **XML Processing**: Uses xml2js library to parse PubMed XML responses into JavaScript objects
 
-## Data Storage
-The application uses PostgreSQL as its primary database with Drizzle ORM for type-safe database operations. The schema includes two main entities: papers (storing individual research paper metadata) and citation networks (storing complete network graphs with nodes and edges). Neon Database provides the PostgreSQL hosting, and the system implements caching strategies to reduce API calls to PubMed.
+### Caching Strategy
+- **File-Based Caching**: Local filesystem cache for PubMed XML responses to reduce API calls
+- **Cache Directory**: `./pubmed_cache/` with individual XML files named by PMID
+- **Cache-First Approach**: Checks local cache before making API requests
 
-## Network Generation Process
-Citation networks are built by starting with a root paper (identified by DOI) and recursively discovering connected papers through citation relationships. The system fetches paper metadata from PubMed, extracts citation information, and builds a graph structure with configurable depth levels. The resulting network includes paper details, author information, publication years, and citation counts.
+### Data Processing
+- **Asynchronous Processing**: Uses async/await pattern for API calls and file operations
+- **Error Handling**: Implements try-catch blocks for API failures and data parsing errors
+- **XML Parsing**: Converts PubMed XML responses to JavaScript objects for data extraction
 
-## Data Visualization
-The network visualization uses D3.js force simulation to create interactive graphs where nodes represent papers and edges represent citation relationships. Users can adjust visualization parameters like showing labels, highlighting citation patterns, and clustering papers by publication year. The system supports drag interactions, zoom capabilities, and dynamic node selection for detailed paper information.
+### Display Architecture
+- **Flat List Display**: Shows papers grouped by category (root, citing, references, related)
+- **Raw Data Verification**: Displays XML excerpts for data validation
+- **Real-time Updates**: Client-side JavaScript handles form submission and result display
 
-# External Dependencies
+## External Dependencies
 
-- **PubMed API**: NIH's E-utilities API for fetching scientific paper metadata and citation information
-- **Neon Database**: Serverless PostgreSQL hosting for data persistence
-- **Shadcn/ui**: Component library built on Radix UI for consistent, accessible interface elements
-- **D3.js**: Data visualization library for creating interactive network graphs
-- **TanStack Query**: Server state management for API calls and caching
-- **Drizzle ORM**: Type-safe PostgreSQL database operations and schema management
-- **Wouter**: Lightweight client-side routing for single-page application navigation
+### Third-Party APIs
+- **NCBI E-utilities**: Primary data source for PubMed paper metadata and citation relationships
+  - esearch API for DOI to PMID conversion
+  - efetch API for retrieving full paper XML data
+
+### NPM Dependencies
+- **express**: Web framework for Node.js server and API endpoints
+- **axios**: HTTP client for making requests to external APIs
+- **xml2js**: XML parsing library for converting PubMed XML to JavaScript objects
+
+### File System Dependencies
+- **Local Cache**: File system storage for caching PubMed XML responses
+- **Static Assets**: Public directory for serving HTML, CSS, and JavaScript files
+
+### Development Architecture
+- **Single-Server Setup**: All functionality contained in single Express.js application
+- **No Database**: Currently uses file-based caching instead of database storage
+- **Phase-Based Development**: Designed for incremental feature additions in future phases

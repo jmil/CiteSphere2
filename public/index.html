@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scientific Citation Network Visualizer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background-color: #0a0a0a;
+            color: #e5e5e5;
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #ffffff;
+            margin-bottom: 30px;
+            font-size: 2rem;
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 1px solid #333;
+        }
+
+        .input-section {
+            background: #1a1a1a;
+            padding: 30px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            border: 1px solid #333;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #e5e5e5;
+            font-weight: 500;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            background: #0a0a0a;
+            border: 1px solid #333;
+            color: #e5e5e5;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #4a9eff;
+        }
+
+        button {
+            background: #4a9eff;
+            color: #ffffff;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #3a8eef;
+        }
+
+        button:disabled {
+            background: #333;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #4a9eff;
+        }
+
+        .error {
+            background: #ff4444;
+            color: #ffffff;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+
+        .results-section {
+            display: none;
+        }
+
+        .paper-section {
+            background: #1a1a1a;
+            padding: 20px;
+            margin-bottom: 30px;
+            border-radius: 8px;
+            border: 1px solid #333;
+        }
+
+        .paper-section h2 {
+            color: #4a9eff;
+            margin-bottom: 20px;
+            font-size: 1.4rem;
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+        }
+
+        .paper-info {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #0a0a0a;
+            border-radius: 4px;
+        }
+
+        .paper-info h3 {
+            color: #ffffff;
+            margin-bottom: 8px;
+            font-size: 1.1rem;
+        }
+
+        .paper-meta {
+            color: #999;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+        }
+
+        .xml-excerpt {
+            background: #0a0a0a;
+            padding: 10px;
+            border: 1px solid #333;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            overflow-x: auto;
+            color: #999;
+            margin-top: 10px;
+        }
+
+        .paper-list {
+            list-style: none;
+        }
+
+        .paper-list li {
+            padding: 15px;
+            background: #0a0a0a;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            border: 1px solid #222;
+        }
+
+        .pmid {
+            color: #4a9eff;
+            font-family: monospace;
+            margin-right: 10px;
+        }
+
+        .total-count {
+            color: #999;
+            font-size: 0.9rem;
+            margin-bottom: 15px;
+        }
+
+        .help-text {
+            color: #999;
+            font-size: 0.9rem;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Scientific Citation Network Visualizer</h1>
+        
+        <div class="input-section">
+            <form id="analyzeForm">
+                <div class="form-group">
+                    <label for="doi">Enter DOI:</label>
+                    <input type="text" id="doi" name="doi" placeholder="e.g., 10.1038/nature12373" required>
+                    <div class="help-text">Enter a DOI to analyze citation networks. Example: 10.1038/nature12373</div>
+                </div>
+                <button type="submit" id="analyzeBtn">Analyze Citations</button>
+            </form>
+        </div>
+
+        <div id="loading" class="loading" style="display: none;">
+            <p>Fetching citation data from PubMed... This may take a moment.</p>
+        </div>
+
+        <div id="error" class="error" style="display: none;"></div>
+
+        <div id="results" class="results-section">
+            <div class="paper-section">
+                <h2>ROOT PAPER</h2>
+                <div id="rootPaper"></div>
+            </div>
+
+            <div class="paper-section">
+                <h2>PAPERS CITING THIS</h2>
+                <div id="citingPapers"></div>
+            </div>
+
+            <div class="paper-section">
+                <h2>REFERENCES/CITED BY THIS</h2>
+                <div id="referencePapers"></div>
+            </div>
+
+            <div class="paper-section">
+                <h2>RELATED PAPERS</h2>
+                <div id="relatedPapers"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('analyzeForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const doi = document.getElementById('doi').value.trim();
+            const loading = document.getElementById('loading');
+            const error = document.getElementById('error');
+            const results = document.getElementById('results');
+            const button = document.getElementById('analyzeBtn');
+            
+            // Reset state
+            loading.style.display = 'block';
+            error.style.display = 'none';
+            results.style.display = 'none';
+            button.disabled = true;
+            
+            try {
+                const response = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ doi })
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to analyze DOI');
+                }
+                
+                const data = await response.json();
+                displayResults(data);
+                results.style.display = 'block';
+                
+            } catch (err) {
+                error.textContent = `Error: ${err.message}`;
+                error.style.display = 'block';
+            } finally {
+                loading.style.display = 'none';
+                button.disabled = false;
+            }
+        });
+        
+        function displayResults(data) {
+            // Display root paper
+            const rootPaperDiv = document.getElementById('rootPaper');
+            rootPaperDiv.innerHTML = `
+                <div class="paper-info">
+                    <h3>${data.rootPaper.title}</h3>
+                    <div class="paper-meta">
+                        <span class="pmid">PMID: ${data.rootPaper.pmid}</span>
+                        <span>Year: ${data.rootPaper.year}</span>
+                    </div>
+                    <div class="paper-meta">Authors: ${data.rootPaper.authors}</div>
+                    <div class="xml-excerpt">
+                        <strong>XML Excerpt (first 500 chars):</strong><br>
+                        ${escapeHtml(data.rootPaper.xmlExcerpt)}
+                    </div>
+                </div>
+            `;
+            
+            // Display citing papers
+            displayPaperList('citingPapers', data.citingPapers);
+            
+            // Display reference papers
+            displayPaperList('referencePapers', data.referencePapers);
+            
+            // Display related papers
+            displayPaperList('relatedPapers', data.relatedPapers);
+        }
+        
+        function displayPaperList(elementId, paperData) {
+            const container = document.getElementById(elementId);
+            
+            let html = `<div class="total-count">Total: ${paperData.total} papers (showing first ${paperData.papers.length})</div>`;
+            html += '<ul class="paper-list">';
+            
+            for (const paper of paperData.papers) {
+                html += `
+                    <li>
+                        <div><span class="pmid">PMID: ${paper.pmid}</span></div>
+                        <div><strong>${paper.title}</strong></div>
+                        <div class="paper-meta">Authors: ${paper.authors} | Year: ${paper.year}</div>
+                    </li>
+                `;
+            }
+            
+            if (paperData.papers.length === 0) {
+                html += '<li>No papers found in this category</li>';
+            }
+            
+            html += '</ul>';
+            container.innerHTML = html;
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
